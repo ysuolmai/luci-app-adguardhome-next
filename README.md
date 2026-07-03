@@ -1,3 +1,7 @@
+# 高质量<付费>中转站
+
+https://sc.350303.xyz/register?aff=C8X8NEL4BXX6
+
 # luci-app-adguardhome
 复杂的AdGuardHome的openwrt的luci界面
 
