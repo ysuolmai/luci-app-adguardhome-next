@@ -13,7 +13,7 @@ jobs:
   syntax:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check shell, JSON and JavaScript syntax
         run: |
           set -eu
@@ -41,7 +41,7 @@ jobs:
           - release: 23.05.5
             target: x86/64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download official OpenWrt SDK
         id: sdk
@@ -73,6 +73,14 @@ jobs:
         working-directory: ${{ steps.sdk.outputs.dir }}
         run: make package/luci-app-adguardhome/compile V=s -j2
 
+      - name: Parse rpcd ucode plugin
+        working-directory: ${{ steps.sdk.outputs.dir }}
+        run: |
+          set -eu
+          compiler="$(find staging_dir/host/bin -type f -name ucode -perm -111 -print -quit)"
+          test -n "$compiler"
+          "$compiler" -c "$GITHUB_WORKSPACE/root/usr/share/rpcd/ucode/luci.adguardhome" >/dev/null
+
       - name: Collect packages
         env:
           RELEASE: ${{ matrix.release }}
@@ -82,7 +90,7 @@ jobs:
             -exec cp {} artifacts/ \;
           test -n "$(find artifacts -type f -print -quit)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: luci-app-adguardhome-openwrt-${{ matrix.release }}
           path: artifacts/*

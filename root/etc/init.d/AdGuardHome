@@ -184,7 +184,7 @@ write_upgrade_keep() {
 	config_get workdir "$SECTION" workdir "/usr/bin/AdGuardHome"
 	config_get logfile "$SECTION" logfile ""
 	config_get protect "$SECTION" upprotect ""
-	: > /lib/upgrade/keep.d/luci-app-adguardhome
+	echo "$configpath" > /lib/upgrade/keep.d/luci-app-adguardhome
 	for file in $protect; do
 		case "$file" in
 			'${binpath}'|'$binpath') echo "$binpath";;

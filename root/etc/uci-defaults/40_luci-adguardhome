@@ -4,6 +4,14 @@
 configpath="$(uci -q get AdGuardHome.AdGuardHome.configpath)"
 if [ "$configpath" = /etc/config/AdGuardHome.yaml ] && [ ! -e "$configpath" ]; then
 	uci -q set AdGuardHome.AdGuardHome.configpath=/etc/AdGuardHome.yaml
+	configpath=/etc/AdGuardHome.yaml
+fi
+[ -n "$configpath" ] || configpath=/etc/AdGuardHome.yaml
+if [ ! -e "$configpath" ]; then
+	parent="${configpath%/*}"; [ -n "$parent" ] || parent=/
+	mkdir -p "$parent"
+	cp /usr/share/AdGuardHome/AdGuardHome_template.yaml "$configpath"
+	chmod 600 "$configpath"
 fi
 uci -q delete AdGuardHome.AdGuardHome.ucitracktest
 uci -q commit AdGuardHome
