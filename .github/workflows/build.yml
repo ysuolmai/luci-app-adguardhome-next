@@ -69,17 +69,19 @@ jobs:
           printf 'CONFIG_PACKAGE_luci-app-adguardhome=m\n' >> .config
           make defconfig
 
-      - name: Compile package
-        working-directory: ${{ steps.sdk.outputs.dir }}
-        run: make package/luci-app-adguardhome/compile V=s -j2
-
       - name: Parse rpcd ucode plugin
         working-directory: ${{ steps.sdk.outputs.dir }}
         run: |
           set -eu
+          make package/ucode/host/compile V=s -j2
           compiler="$(find staging_dir/host/bin -type f -name ucode -perm -111 -print -quit)"
           test -n "$compiler"
-          "$compiler" -c "$GITHUB_WORKSPACE/root/usr/share/rpcd/ucode/luci.adguardhome" >/dev/null
+          "$compiler" -c -o /tmp/luci.adguardhome.uc \
+            "$GITHUB_WORKSPACE/root/usr/share/rpcd/ucode/luci.adguardhome"
+
+      - name: Compile package
+        working-directory: ${{ steps.sdk.outputs.dir }}
+        run: make package/luci-app-adguardhome/compile V=s -j2
 
       - name: Collect packages
         env:
