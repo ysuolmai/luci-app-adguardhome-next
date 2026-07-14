@@ -77,7 +77,7 @@ jobs:
           compiler="$(find staging_dir/hostpkg/bin staging_dir/host/bin \
             -type f -name ucode -perm -111 -print -quit 2>/dev/null)"
           test -n "$compiler"
-          "$compiler" -c -o /tmp/luci.adguardhome.uc \
+          "$compiler" -cdynlink=uci,dynlink=ubus -o /tmp/luci.adguardhome.uc \
             "$GITHUB_WORKSPACE/root/usr/share/rpcd/ucode/luci.adguardhome"
 
       - name: Compile package
