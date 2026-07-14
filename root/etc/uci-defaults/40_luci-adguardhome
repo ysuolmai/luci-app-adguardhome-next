@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Migrate the historical default without overriding user-selected paths.
+configpath="$(uci -q get AdGuardHome.AdGuardHome.configpath)"
+if [ "$configpath" = /etc/config/AdGuardHome.yaml ] && [ ! -e "$configpath" ]; then
+	uci -q set AdGuardHome.AdGuardHome.configpath=/etc/AdGuardHome.yaml
+fi
+uci -q delete AdGuardHome.AdGuardHome.ucitracktest
+uci -q commit AdGuardHome
+
+rm -f /tmp/luci-indexcache
+exit 0

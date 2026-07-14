@@ -1,0 +1,89 @@
+name: Build OpenWrt package
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell, JSON and JavaScript syntax
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck --severity=error -s sh -x \
+            root/etc/init.d/AdGuardHome \
+            root/etc/uci-defaults/40_luci-adguardhome \
+            root/usr/share/AdGuardHome/update_core.sh \
+            root/usr/share/AdGuardHome/update_cron.sh \
+            root/usr/share/AdGuardHome/tailto.sh
+          find root -type f -name '*.json' -exec jq -e . {} \; >/dev/null
+          find htdocs -type f -name '*.js' -print0 | while IFS= read -r -d '' file; do
+            node -e "new Function(require('fs').readFileSync(process.argv[1], 'utf8'))" "$file"
+          done
+
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: 24.10.2
+            target: x86/64
+          - release: 23.05.5
+            target: x86/64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official OpenWrt SDK
+        id: sdk
+        env:
+          RELEASE: ${{ matrix.release }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -eu
+          target_path="${TARGET%/*}/${TARGET#*/}"
+          base="https://downloads.openwrt.org/releases/${RELEASE}/targets/${target_path}"
+          archive="$(curl -fsSL "$base/" | sed -n 's/.*href="\([^"]*sdk[^"]*Linux-x86_64\.tar\.\(xz\|zst\)\)".*/\1/p' | head -n1)"
+          test -n "$archive"
+          curl --fail --location --retry 3 --output sdk.tar "${base}/${archive}"
+          mkdir sdk
+          tar -xf sdk.tar --strip-components=1 -C sdk
+          echo "dir=$GITHUB_WORKSPACE/sdk" >> "$GITHUB_OUTPUT"
+
+      - name: Install feeds and package
+        working-directory: ${{ steps.sdk.outputs.dir }}
+        run: |
+          set -eu
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          ln -s "$GITHUB_WORKSPACE" package/luci-app-adguardhome
+          printf 'CONFIG_PACKAGE_luci-app-adguardhome=m\n' >> .config
+          make defconfig
+
+      - name: Compile package
+        working-directory: ${{ steps.sdk.outputs.dir }}
+        run: make package/luci-app-adguardhome/compile V=s -j2
+
+      - name: Collect packages
+        env:
+          RELEASE: ${{ matrix.release }}
+        run: |
+          mkdir -p artifacts
+          find sdk/bin/packages -type f \( -name 'luci-app-adguardhome*.ipk' -o -name 'luci-app-adguardhome*.apk' \) \
+            -exec cp {} artifacts/ \;
+          test -n "$(find artifacts -type f -print -quit)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-adguardhome-openwrt-${{ matrix.release }}
+          path: artifacts/*
+          if-no-files-found: error

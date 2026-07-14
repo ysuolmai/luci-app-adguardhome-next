@@ -1,0 +1,26 @@
+{
+	"admin/services/adguardhome": {
+		"title": "AdGuard Home",
+		"order": 10,
+		"action": { "type": "firstchild" },
+		"depends": {
+			"acl": [ "luci-app-adguardhome" ],
+			"uci": { "AdGuardHome": true }
+		}
+	},
+	"admin/services/adguardhome/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": { "type": "view", "path": "adguardhome/overview" }
+	},
+	"admin/services/adguardhome/config": {
+		"title": "Configuration",
+		"order": 20,
+		"action": { "type": "view", "path": "adguardhome/config" }
+	},
+	"admin/services/adguardhome/log": {
+		"title": "Log",
+		"order": 30,
+		"action": { "type": "view", "path": "adguardhome/log" }
+	}
+}

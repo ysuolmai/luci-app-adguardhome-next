@@ -1,0 +1,168 @@
+#!/usr/bin/ucode
+// SPDX-License-Identifier: Apache-2.0
+
+'use strict';
+
+import { access, lstat, popen, readfile, writefile } from 'fs';
+import { cursor } from 'uci';
+import { connect } from 'ubus';
+
+const RUN_DIR = '/var/run/adguardhome';
+const UPDATE_LOG = RUN_DIR + '/update.log';
+const UPDATE_LOCK = RUN_DIR + '/update.lock';
+
+function shellquote(value) {
+	return `'${replace(value || '', "'", "'\\''")}'`;
+}
+
+function settings() {
+	const uci = cursor();
+	return {
+		binpath: uci.get('AdGuardHome', 'AdGuardHome', 'binpath') || '/usr/bin/AdGuardHome/AdGuardHome',
+		configpath: uci.get('AdGuardHome', 'AdGuardHome', 'configpath') || '/etc/AdGuardHome.yaml',
+		logfile: uci.get('AdGuardHome', 'AdGuardHome', 'logfile') || ''
+	};
+}
+
+function readCommand(command, limit) {
+	const fd = popen(command);
+	if (!fd)
+		return '';
+	let output = '', chunk;
+	while (length(output) < limit) {
+		chunk = fd.read(min(16384, limit - length(output)));
+		if (chunk === null || chunk === '')
+			break;
+		output += chunk;
+	}
+	fd.close();
+	return output;
+}
+
+function serviceRunning() {
+	const ubus = connect();
+	const reply = ubus.call('service', 'list', { name: 'AdGuardHome' }) || {};
+	const instances = reply?.AdGuardHome?.instances || {};
+	for (let name in keys(instances))
+		if (instances[name]?.running)
+			return true;
+	return false;
+}
+
+const methods = {
+	status: {
+		call: function() {
+			const cfg = settings();
+			return {
+				running: serviceRunning(),
+				installed: !!access(cfg.binpath),
+				redirected: trim(readfile(RUN_DIR + '/redirect.state') || '') === '1',
+				version: trim(readfile(RUN_DIR + '/version') || '') || null
+			};
+		}
+	},
+
+	service_action: {
+		args: { action: 'action' },
+		call: function(req) {
+			const action = req.args?.action;
+			if (index([ 'start', 'stop', 'restart', 'reload' ], action) === -1)
+				return { result: false, error: 'invalid action' };
+			return { result: system(`/etc/init.d/AdGuardHome ${action}`) === 0 };
+		}
+	},
+
+	log_read: {
+		args: { offset: 'offset' },
+		call: function(req) {
+			const cfg = settings();
+			let offset = max(0, int(req.args?.offset || 0));
+			if (!cfg.logfile)
+				return { data: '', offset: 0, available: false };
+			if (cfg.logfile === 'syslog') {
+				const data = readCommand("logread -e AdGuardHome | tail -n 500", 262144);
+				return { data, offset: length(data), available: true, snapshot: true };
+			}
+			const st = lstat(cfg.logfile);
+			if (!st || st.type !== 'file')
+				return { data: '', offset: 0, available: false };
+			if (offset > st.size)
+				offset = 0;
+			/* tail uses a one-based byte position. Output is bounded for slow clients. */
+			const data = readCommand(
+				`tail -c +${offset + 1} ${shellquote(cfg.logfile)} 2>/dev/null | head -c 262144`,
+				262144
+			);
+			return { data, offset: offset + length(data), size: st.size, available: true };
+		}
+	},
+
+	log_clear: {
+		call: function() {
+			const cfg = settings();
+			if (!cfg.logfile || cfg.logfile === 'syslog')
+				return { result: false, error: 'log is not a regular file' };
+			return { result: writefile(cfg.logfile, '') !== null };
+		}
+	},
+
+	config_read: {
+		call: function() {
+			const cfg = settings();
+			return {
+				content: readfile(cfg.configpath) || readfile('/usr/share/AdGuardHome/AdGuardHome_template.yaml') || '',
+				path: cfg.configpath
+			};
+		}
+	},
+
+	config_write: {
+		args: { content: 'content' },
+		call: function(req) {
+			const cfg = settings();
+			let content = (type(req.args?.content) === 'string') ? req.args.content : '';
+			if (!match(cfg.configpath, /^\/[A-Za-z0-9_.+@%:\/-]+$/))
+				return { result: false, error: 'configuration path must be an absolute path' };
+			if (!content || length(content) > 2097152)
+				return { result: false, error: 'configuration is empty or too large' };
+			content = replace(content, /\r\n?/g, '\n');
+			if (!match(content, /\n$/))
+				content += '\n';
+			const parent = replace(cfg.configpath, /\/[^\/]+$/, '');
+			system(`mkdir -p ${shellquote(RUN_DIR)} ${shellquote(parent || '/')}`);
+			const tmp = RUN_DIR + '/config.yaml.tmp';
+			if (writefile(tmp, content) === null)
+				return { result: false, error: 'unable to write temporary configuration' };
+			if (access(cfg.binpath)) {
+				const rc = system(`${shellquote(cfg.binpath)} -c ${shellquote(tmp)} --check-config >${shellquote(RUN_DIR + '/config-check.log')} 2>&1`);
+				if (rc !== 0)
+					return { result: false, error: readfile(RUN_DIR + '/config-check.log') || 'configuration check failed' };
+			}
+			if (system(`chmod 600 ${shellquote(tmp)} && mv -f ${shellquote(tmp)} ${shellquote(cfg.configpath)}`) !== 0)
+				return { result: false, error: 'unable to replace configuration' };
+			system('/etc/init.d/AdGuardHome reload >/dev/null 2>&1');
+			return { result: true };
+		}
+	},
+
+	update_start: {
+		args: { force: 'force' },
+		call: function(req) {
+			if (access(UPDATE_LOCK))
+				return { result: false, running: true };
+			system(`mkdir -p ${shellquote(RUN_DIR)}; /usr/share/AdGuardHome/update_core.sh ${req.args?.force ? 'force' : ''} >${shellquote(UPDATE_LOG)} 2>&1 &`);
+			return { result: true };
+		}
+	},
+
+	update_status: {
+		call: function() {
+			return {
+				running: !!access(UPDATE_LOCK),
+				log: readfile(UPDATE_LOG) || ''
+			};
+		}
+	}
+};
+
+return { 'luci.adguardhome': methods };
