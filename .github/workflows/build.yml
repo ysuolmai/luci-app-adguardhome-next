@@ -36,9 +36,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - release: 24.10.2
+          - release: 24.10.7
             target: x86/64
-          - release: 23.05.5
+          - release: 25.12.5
             target: x86/64
     steps:
       - uses: actions/checkout@v5
