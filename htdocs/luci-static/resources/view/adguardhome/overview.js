@@ -117,6 +117,15 @@ return view.extend({
 			updateDetails
 		]);
 		const serviceControls = E('div', {}, [ webButton, ' ', startButton, ' ', restartButton, ' ', stopButton ]);
+		const normalizeMultiValueText = (option) => {
+			const renderWidget = option.renderWidget;
+			option.renderWidget = function(...args) {
+				const widget = renderWidget.apply(this, args);
+				widget.style.fontSize = '0.875rem';
+				widget.querySelectorAll('li, label, span').forEach((node) => node.style.fontSize = 'inherit');
+				return widget;
+			};
+		};
 
 		let m = new form.Map('AdGuardHome', _('AdGuard Home'), _('AdGuard Home service and DNS settings.'));
 		let s = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Quick setup'));
@@ -177,17 +186,12 @@ return view.extend({
 		o.value('autohost', _('Refresh IPv6 hosts hourly'));
 		o.value('autogfw', _('Refresh the GFW upstream list daily'));
 		o.value('autogfwipset', _('Refresh the GFW ipset list daily'));
-		const renderScheduledTasks = o.renderWidget;
-		o.renderWidget = function(...args) {
-			const widget = renderScheduledTasks.apply(this, args);
-			widget.style.fontSize = '0.875rem';
-			widget.querySelectorAll('li, label, span').forEach((node) => node.style.fontSize = 'inherit');
-			return widget;
-		};
+		normalizeMultiValueText(o);
 		o = as.option(form.Value, 'gfwupstream', _('GFW list upstream DNS'));
 		o.default = 'tcp://208.67.220.220:5353';
 		o = as.option(form.MultiValue, 'backupfile', _('Data to back up when stopping'));
 		[ 'filters', 'stats.db', 'querylog.json', 'sessions.db' ].forEach((name) => o.value(name));
+		normalizeMultiValueText(o);
 		o = as.option(form.Value, 'backupwdpath', _('Backup directory'));
 		o.default = '/usr/bin/AdGuardHome';
 		o.depends('backupfile', /.+/);
