@@ -43,6 +43,7 @@ return view.extend({
 		const startButton = E('button', { 'class': 'btn cbi-button cbi-button-positive', 'type': 'button' }, _('Start'));
 		const restartButton = E('button', { 'class': 'btn cbi-button cbi-button-action', 'type': 'button' }, _('Restart'));
 		const stopButton = E('button', { 'class': 'btn cbi-button cbi-button-negative', 'type': 'button' }, _('Stop'));
+		const webButton = E('button', { 'class': 'btn cbi-button cbi-button-action', 'type': 'button' }, _('Open web interface'));
 
 		const renderStatus = (state) => {
 			currentStatus = state || {};
@@ -54,6 +55,7 @@ return view.extend({
 			startButton.disabled = !state.installed || !!state.running;
 			restartButton.disabled = !state.installed;
 			stopButton.disabled = !state.running;
+			webButton.disabled = !state.running;
 		};
 
 		const renderUpdate = (state) => {
@@ -83,6 +85,15 @@ return view.extend({
 		startButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('start')));
 		restartButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('restart')));
 		stopButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('stop')));
+		webButton.addEventListener('click', ui.createHandlerFn(this, () => {
+			const url = new URL(window.location.href);
+			url.protocol = 'http:';
+			url.port = uci.get('AdGuardHome', 'AdGuardHome', 'httpport') || '3000';
+			url.pathname = '/';
+			url.search = '';
+			url.hash = '';
+			window.open(url.toString(), '_blank', 'noopener');
+		}));
 		updateButton.addEventListener('click', ui.createHandlerFn(this, () => {
 			updateButton.disabled = true;
 			dom.content(updateButton, _('Downloading…'));
@@ -105,7 +116,7 @@ return view.extend({
 			E('div', {}, [ updateButton, updateState ]),
 			updateDetails
 		]);
-		const serviceControls = E('div', {}, [ startButton, ' ', restartButton, ' ', stopButton ]);
+		const serviceControls = E('div', {}, [ webButton, ' ', startButton, ' ', restartButton, ' ', stopButton ]);
 
 		let m = new form.Map('AdGuardHome', _('AdGuard Home'), _('AdGuard Home service and DNS settings.'));
 		let s = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Quick setup'));

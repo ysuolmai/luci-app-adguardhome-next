@@ -407,6 +407,9 @@ msgstr "让 AdGuard Home 使用 53 端口"
 msgid "Service controls"
 msgstr "服务控制"
 
+msgid "Open web interface"
+msgstr "打开后台页面"
+
 msgid "Advanced core settings"
 msgstr "高级核心设置"
 
