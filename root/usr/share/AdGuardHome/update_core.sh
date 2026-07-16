@@ -106,11 +106,15 @@ while IFS= read -r template; do
 done < /usr/share/AdGuardHome/links.txt
 [ "$downloaded" -eq 1 ] || { echo "All download sources failed."; exit 1; }
 
-tar -tzf "$archive" | grep -qx 'AdGuardHome/AdGuardHome' || {
+if tar -tzf "$archive" | grep -qx './AdGuardHome/AdGuardHome'; then
+	archive_member=./AdGuardHome/AdGuardHome
+elif tar -tzf "$archive" | grep -qx 'AdGuardHome/AdGuardHome'; then
+	archive_member=AdGuardHome/AdGuardHome
+else
 	echo "The archive does not contain the expected executable."
 	exit 1
-}
-tar -xzf "$archive" -C "$WORK_DIR" AdGuardHome/AdGuardHome
+fi
+tar -xzf "$archive" -C "$WORK_DIR" "$archive_member"
 candidate="$WORK_DIR/AdGuardHome/AdGuardHome"
 chmod 755 "$candidate"
 candidate_version="$(version_of "$candidate")"
