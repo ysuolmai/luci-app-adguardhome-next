@@ -27,67 +27,94 @@ return view.extend({
 	},
 
 	render(data) {
-		const initialStatus = data[1] || {};
-		const initialUpdate = data[2] || {};
+		let currentStatus = data[1] || {};
 		const statusText = E('strong');
 		const redirectText = E('span');
 		const versionText = E('span');
+		const updateState = E('span', { 'style': 'margin-left:.75rem' });
 		const updateLog = E('pre', {
-			'style': 'max-height:18rem;overflow:auto;white-space:pre-wrap;margin:0'
+			'style': 'max-height:18rem;overflow:auto;white-space:pre-wrap;margin:.75rem 0 0'
 		});
-		const updateButton = E('button', {
-			'class': 'btn cbi-button cbi-button-action'
-		}, [ _('Check for updates') ]);
+		const updateDetails = E('details', { 'style': 'margin-top:.75rem' }, [
+			E('summary', {}, _('Download log')),
+			updateLog
+		]);
+		const updateButton = E('button', { 'class': 'btn cbi-button', 'type': 'button' });
+		const startButton = E('button', { 'class': 'btn cbi-button cbi-button-positive', 'type': 'button' }, _('Start'));
+		const restartButton = E('button', { 'class': 'btn cbi-button cbi-button-action', 'type': 'button' }, _('Restart'));
+		const stopButton = E('button', { 'class': 'btn cbi-button cbi-button-negative', 'type': 'button' }, _('Stop'));
 
 		const renderStatus = (state) => {
+			currentStatus = state || {};
 			statusText.style.color = state.running ? 'green' : 'red';
 			dom.content(statusText, state.running ? _('RUNNING') : _('NOT RUNNING'));
 			redirectText.style.color = state.redirected ? 'green' : 'gray';
 			dom.content(redirectText, state.redirected ? _('DNS redirection active') : _('DNS redirection inactive'));
 			dom.content(versionText, state.version || (state.installed ? _('Unknown version') : _('Core is not installed')));
+			startButton.disabled = !state.installed || !!state.running;
+			restartButton.disabled = !state.installed;
+			stopButton.disabled = !state.running;
 		};
 
 		const renderUpdate = (state) => {
-			updateButton.disabled = !!state.running;
-			dom.content(updateButton, state.running ? _('Updating…') : _('Check for updates'));
-			dom.content(updateLog, state.log || _('No update has been run yet.'));
+			const running = !!state.running;
+			updateButton.disabled = running;
+			updateButton.className = 'btn cbi-button ' + (currentStatus.installed ? 'cbi-button-action' : 'cbi-button-positive important');
+			dom.content(updateButton, running
+				? _('Downloading…')
+				: (currentStatus.installed ? _('Check for core updates') : _('Download and install core')));
+			updateState.style.color = state.result === 'failed' ? 'red' : (state.result === 'success' ? 'green' : 'gray');
+			dom.content(updateState, running ? _('Download in progress') :
+				(state.result === 'success' ? _('Last download succeeded') :
+				(state.result === 'failed' ? _('Last download failed') : '')));
+			dom.content(updateLog, state.log || _('No download has been run yet.'));
+			if (running || state.result === 'failed')
+				updateDetails.open = true;
 		};
 
-		const runAction = (action) => {
-			return callAction(action).then((res) => {
-				if (!res.result)
-					throw new Error(_('Service action failed.'));
-				return callStatus().then(renderStatus);
-			}).catch((e) => ui.addNotification(null, E('p', e.message), 'error'));
-		};
+		const runAction = (action) => callAction(action).then((res) => {
+			if (!res.result)
+				throw new Error(action === 'start' && !currentStatus.installed
+					? _('Download the AdGuard Home core before starting the service.')
+					: _('Service action failed.'));
+			return callStatus().then(renderStatus);
+		}).catch((e) => ui.addNotification(null, E('p', e.message), 'error'));
 
+		startButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('start')));
+		restartButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('restart')));
+		stopButton.addEventListener('click', ui.createHandlerFn(this, () => runAction('stop')));
 		updateButton.addEventListener('click', ui.createHandlerFn(this, () => {
+			updateButton.disabled = true;
+			dom.content(updateButton, _('Downloading…'));
+			dom.content(updateState, _('Download in progress'));
 			return callUpdateStart(false).then((res) => {
 				if (!res.result && !res.running)
-					throw new Error(_('Unable to start the update task.'));
+					throw new Error(_('Unable to start the core download.'));
+				updateDetails.open = true;
 				return callUpdateStatus().then(renderUpdate);
 			}).catch((e) => ui.addNotification(null, E('p', e.message), 'error'));
 		}));
 
-		const actionButtons = E('div', { 'class': 'right' }, [
-			E('button', { 'class': 'btn cbi-button cbi-button-action', 'click': ui.createHandlerFn(this, () => runAction('start')) }, _('Start')),
-			' ',
-			E('button', { 'class': 'btn cbi-button cbi-button-action', 'click': ui.createHandlerFn(this, () => runAction('restart')) }, _('Restart')),
-			' ',
-			E('button', { 'class': 'btn cbi-button cbi-button-negative', 'click': ui.createHandlerFn(this, () => runAction('stop')) }, _('Stop'))
-		]);
-
 		const statusTable = E('table', { 'class': 'table' }, [
 			E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td left', 'width': '33%' }, _('Service')), E('td', { 'class': 'td left' }, statusText) ]),
-			E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td left' }, _('Version')), E('td', { 'class': 'td left' }, versionText) ]),
-			E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td left' }, _('Redirect')), E('td', { 'class': 'td left' }, redirectText) ])
+			E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td left' }, _('Core version')), E('td', { 'class': 'td left' }, versionText) ]),
+			E('tr', { 'class': 'tr' }, [ E('td', { 'class': 'td left' }, _('DNS integration')), E('td', { 'class': 'td left' }, redirectText) ])
 		]);
 
-		let m = new form.Map('AdGuardHome', _('AdGuard Home'),
-			_('AdGuard Home integration settings. DNS query performance is provided by the official AdGuard Home core.'));
-		let s = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('General settings'));
+		const coreControls = E('div', {}, [
+			E('div', {}, [ updateButton, updateState ]),
+			updateDetails
+		]);
+		const serviceControls = E('div', {}, [ startButton, ' ', restartButton, ' ', stopButton ]);
+
+		let m = new form.Map('AdGuardHome', _('AdGuard Home'), _('AdGuard Home service and DNS settings.'));
+		let s = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Quick setup'));
 		s.anonymous = true;
-		let o = s.option(form.Flag, 'enabled', _('Enable'));
+		let o = s.option(form.DummyValue, '_status', _('Status'));
+		o.renderWidget = () => statusTable;
+		o = s.option(form.DummyValue, '_core_download', _('AdGuard Home core'));
+		o.renderWidget = () => coreControls;
+		o = s.option(form.Flag, 'enabled', _('Enable'));
 		o.rmempty = false;
 		o = s.option(form.Value, 'httpport', _('Web interface port'));
 		o.datatype = 'port';
@@ -99,32 +126,38 @@ return view.extend({
 		o.value('redirect', _('Redirect LAN DNS traffic to AdGuard Home'));
 		o.value('exchange', _('Let AdGuard Home use port 53'));
 		o.default = 'none';
-		o = s.option(form.Value, 'binpath', _('Core executable'));
+		o = s.option(form.DummyValue, '_service_actions', _('Service controls'));
+		o.renderWidget = () => serviceControls;
+
+		let cs = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Advanced core settings'));
+		cs.anonymous = true;
+		o = cs.option(form.Value, 'binpath', _('Core executable'));
 		o.default = '/usr/bin/AdGuardHome/AdGuardHome';
 		o.rmempty = false;
-		o = s.option(form.Value, 'configpath', _('Configuration file'));
+		o = cs.option(form.Value, 'configpath', _('Configuration file'));
 		o.default = '/etc/AdGuardHome.yaml';
 		o.rmempty = false;
-		o = s.option(form.Value, 'workdir', _('Working directory'));
+		o = cs.option(form.Value, 'workdir', _('Working directory'));
 		o.default = '/usr/bin/AdGuardHome';
 		o.rmempty = false;
-		o = s.option(form.Value, 'logfile', _('Runtime log'));
-		o.placeholder = '/tmp/AdGuardHome.log';
-		o.description = _('Use “syslog” to read the system log, or leave empty to disable file logging.');
-		o = s.option(form.Flag, 'verbose', _('Verbose logging'));
-
-		let us = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Core updates'));
-		us.anonymous = true;
-		o = us.option(form.ListValue, 'update_channel', _('Channel'));
+		o = cs.option(form.ListValue, 'update_channel', _('Update channel'));
 		o.value('release', _('Stable'));
 		o.value('beta', _('Beta'));
 		o.default = 'release';
-		o = us.option(form.ListValue, 'arch', _('Architecture'));
+		o = cs.option(form.ListValue, 'arch', _('Download architecture'));
 		o.value('', _('Automatic'));
 		[ '386', 'amd64', 'armv5', 'armv6', 'armv7', 'arm64', 'mips_softfloat', 'mips64_softfloat', 'mipsle_softfloat', 'mips64le_softfloat', 'ppc64le' ].forEach((arch) => o.value(arch));
 		o.rmempty = true;
+		o.description = _('Save and apply architecture or path changes before downloading the core.');
 
-		let as = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Maintenance'));
+		let ls = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Advanced logging'));
+		ls.anonymous = true;
+		o = ls.option(form.Value, 'logfile', _('Runtime log'));
+		o.placeholder = '/tmp/AdGuardHome.log';
+		o.description = _('Use “syslog” to read the system log, or leave empty to disable file logging.');
+		o = ls.option(form.Flag, 'verbose', _('Verbose logging'));
+
+		let as = m.section(form.NamedSection, 'AdGuardHome', 'AdGuardHome', _('Advanced maintenance'));
 		as.anonymous = true;
 		o = as.option(form.MultiValue, 'crontab', _('Scheduled tasks'));
 		o.value('autoupdate', _('Update the core daily'));
@@ -141,27 +174,17 @@ return view.extend({
 		o.default = '/usr/bin/AdGuardHome';
 		o.depends('backupfile', /.+/);
 
-		renderStatus(initialStatus);
-		renderUpdate(initialUpdate);
+		renderStatus(currentStatus);
+		renderUpdate(data[2] || {});
 		poll.add(() => {
 			if (document.hidden)
 				return Promise.resolve();
-			return Promise.all([
-				callStatus().then(renderStatus),
-				callUpdateStatus().then(renderUpdate)
-			]);
-		}, 10);
+			return callStatus().then((state) => {
+				renderStatus(state);
+				return callUpdateStatus().then(renderUpdate);
+			});
+		}, 3);
 
-		return m.render().then((formNode) => E([], [
-			E('div', { 'class': 'cbi-map' }, [
-				E('h2', {}, _('AdGuard Home')),
-				E('div', { 'class': 'cbi-section' }, [ statusTable, actionButtons ])
-			]),
-			formNode,
-			E('div', { 'class': 'cbi-map' }, [
-				E('h3', {}, _('Core update')),
-				E('div', { 'class': 'cbi-section' }, [ updateButton, E('div', { 'style': 'margin-top:1rem' }, updateLog) ])
-			])
-		]));
+		return m.render();
 	}
 });

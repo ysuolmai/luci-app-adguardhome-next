@@ -10,6 +10,7 @@ import { connect } from 'ubus';
 const RUN_DIR = '/var/run/adguardhome';
 const UPDATE_LOG = RUN_DIR + '/update.log';
 const UPDATE_LOCK = RUN_DIR + '/update.lock';
+const UPDATE_RESULT = RUN_DIR + '/update.result';
 
 function shellquote(value) {
 	return `'${replace(value || '', "'", "'\\''")}'`;
@@ -148,17 +149,21 @@ const methods = {
 	update_start: {
 		args: { force: 'force' },
 		call: function(req) {
-			if (access(UPDATE_LOCK))
+			if (access(UPDATE_LOCK) || trim(readfile(UPDATE_RESULT) || '') === 'running')
 				return { result: false, running: true };
-			system(`mkdir -p ${shellquote(RUN_DIR)}; /usr/share/AdGuardHome/update_core.sh ${req.args?.force ? 'force' : ''} >${shellquote(UPDATE_LOG)} 2>&1 &`);
+			system(`mkdir -p ${shellquote(RUN_DIR)}`);
+			writefile(UPDATE_RESULT, 'running\n');
+			system(`/usr/share/AdGuardHome/update_core.sh ${req.args?.force ? 'force' : ''} >${shellquote(UPDATE_LOG)} 2>&1 &`);
 			return { result: true };
 		}
 	},
 
 	update_status: {
 		call: function() {
+			const result = trim(readfile(UPDATE_RESULT) || '');
 			return {
-				running: !!access(UPDATE_LOCK),
+				running: !!access(UPDATE_LOCK) || result === 'running',
+				result,
 				log: readfile(UPDATE_LOG) || ''
 			};
 		}

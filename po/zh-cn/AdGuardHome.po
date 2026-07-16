@@ -309,3 +309,172 @@ msgstr "系统升级时保留数据"
 
 msgid "Boot delay until network ok"
 msgstr "开机时直到网络准备好再启动"
+
+# Modern overview
+msgid "AdGuard Home service and DNS settings."
+msgstr "AdGuard Home 服务与 DNS 设置。"
+
+msgid "Quick setup"
+msgstr "快速设置"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Core version"
+msgstr "核心版本"
+
+msgid "DNS integration"
+msgstr "DNS 接入"
+
+msgid "DNS redirection active"
+msgstr "DNS 重定向已生效"
+
+msgid "DNS redirection inactive"
+msgstr "DNS 重定向未生效"
+
+msgid "Unknown version"
+msgstr "未知版本"
+
+msgid "Core is not installed"
+msgstr "核心未安装"
+
+msgid "AdGuard Home core"
+msgstr "AdGuard Home 核心"
+
+msgid "Download and install core"
+msgstr "下载并安装核心"
+
+msgid "Check for core updates"
+msgstr "检查核心更新"
+
+msgid "Downloading…"
+msgstr "正在下载…"
+
+msgid "Download in progress"
+msgstr "下载进行中"
+
+msgid "Last download succeeded"
+msgstr "上次下载成功"
+
+msgid "Last download failed"
+msgstr "上次下载失败"
+
+msgid "Download log"
+msgstr "下载日志"
+
+msgid "No download has been run yet."
+msgstr "尚未执行过下载。"
+
+msgid "Unable to start the core download."
+msgstr "无法启动核心下载任务。"
+
+msgid "Download the AdGuard Home core before starting the service."
+msgstr "请先下载 AdGuard Home 核心，再启动服务。"
+
+msgid "Service action failed."
+msgstr "服务操作失败。"
+
+msgid "Web interface port"
+msgstr "网页管理端口"
+
+msgid "DNS integration mode"
+msgstr "DNS 接入模式"
+
+msgid "None"
+msgstr "无"
+
+msgid "Use AdGuard Home as dnsmasq upstream"
+msgstr "将 AdGuard Home 用作 dnsmasq 上游"
+
+msgid "Redirect LAN DNS traffic to AdGuard Home"
+msgstr "将局域网 DNS 流量重定向到 AdGuard Home"
+
+msgid "Let AdGuard Home use port 53"
+msgstr "让 AdGuard Home 使用 53 端口"
+
+msgid "Service controls"
+msgstr "服务控制"
+
+msgid "Advanced core settings"
+msgstr "高级核心设置"
+
+msgid "Core executable"
+msgstr "核心执行文件"
+
+msgid "Configuration file"
+msgstr "配置文件"
+
+msgid "Working directory"
+msgstr "工作目录"
+
+msgid "Update channel"
+msgstr "更新通道"
+
+msgid "Stable"
+msgstr "稳定版"
+
+msgid "Automatic"
+msgstr "自动"
+
+msgid "Download architecture"
+msgstr "下载架构"
+
+msgid "Save and apply architecture or path changes before downloading the core."
+msgstr "修改架构或路径后，请先保存并应用，再下载核心。"
+
+msgid "Advanced logging"
+msgstr "高级日志设置"
+
+msgid "Runtime log"
+msgstr "运行日志"
+
+msgid "Use “syslog” to read the system log, or leave empty to disable file logging."
+msgstr "填写“syslog”可读取系统日志；留空则不记录文件日志。"
+
+msgid "Verbose logging"
+msgstr "详细日志"
+
+msgid "Advanced maintenance"
+msgstr "高级维护设置"
+
+msgid "Scheduled tasks"
+msgstr "计划任务"
+
+msgid "Update the core daily"
+msgstr "每天更新核心"
+
+msgid "Limit the query log hourly"
+msgstr "每小时截短查询日志"
+
+msgid "Limit the runtime log daily"
+msgstr "每天截短运行日志"
+
+msgid "Refresh IPv6 hosts hourly"
+msgstr "每小时刷新 IPv6 主机"
+
+msgid "Refresh the GFW upstream list daily"
+msgstr "每天刷新 GFW 上游列表"
+
+msgid "Refresh the GFW ipset list daily"
+msgstr "每天刷新 GFW ipset 列表"
+
+msgid "GFW list upstream DNS"
+msgstr "GFW 列表上游 DNS"
+
+msgid "Data to back up when stopping"
+msgstr "停止服务时备份的数据"
+
+msgid "Backup directory"
+msgstr "备份目录"

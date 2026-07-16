@@ -8,6 +8,7 @@ RUN_DIR=/var/run/adguardhome
 LOCK_DIR="$RUN_DIR/update.lock"
 WORK_DIR="$RUN_DIR/update.$$"
 LOG_TAG=adguardhome-update
+RESULT_FILE="$RUN_DIR/update.result"
 
 mkdir -p "$RUN_DIR"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -16,10 +17,18 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
 fi
 
 cleanup() {
+	rc=$?
 	rm -rf "$WORK_DIR" "$LOCK_DIR"
+	if [ "$rc" -eq 0 ]; then
+		echo success >"$RESULT_FILE"
+	else
+		echo failed >"$RESULT_FILE"
+	fi
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 mkdir -p "$WORK_DIR"
+echo running >"$RESULT_FILE"
 
 cfg() {
 	uci -q get "AdGuardHome.AdGuardHome.$1"
@@ -135,5 +144,6 @@ if ! /etc/init.d/AdGuardHome start >/dev/null 2>&1; then
 fi
 
 rm -f "$backup"
+printf '%s\n' "$candidate_version" >"$RUN_DIR/version"
 logger -t "$LOG_TAG" "updated AdGuard Home from ${current:-none} to $candidate_version"
 echo "Update completed successfully."
