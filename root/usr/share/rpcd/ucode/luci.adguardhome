@@ -74,7 +74,7 @@ const methods = {
 	},
 
 	log_read: {
-		args: { offset: 'offset' },
+		args: { offset: 0 },
 		call: function(req) {
 			const cfg = settings();
 			let offset = max(0, int(req.args?.offset || 0));
@@ -147,7 +147,7 @@ const methods = {
 	},
 
 	update_start: {
-		args: { force: 'force' },
+		args: { force: false },
 		call: function(req) {
 			if (access(UPDATE_LOCK) || trim(readfile(UPDATE_RESULT) || '') === 'running')
 				return { result: false, running: true };
