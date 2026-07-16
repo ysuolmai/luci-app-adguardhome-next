@@ -16,5 +16,11 @@ fi
 uci -q delete AdGuardHome.AdGuardHome.ucitracktest
 uci -q commit AdGuardHome
 
+if [ "$(uci -q get firewall.AdGuardHome)" = include ] && \
+	[ "$(uci -q get firewall.AdGuardHome.path)" = /usr/share/AdGuardHome/firewall.start ]; then
+	uci -q delete firewall.AdGuardHome
+	uci -q commit firewall
+fi
+
 rm -f /tmp/luci-indexcache
 exit 0
