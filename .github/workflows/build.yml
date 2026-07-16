@@ -56,9 +56,10 @@ jobs:
           archive="$(curl -fsSL "$base/" | sed -n 's/.*href="\([^"]*sdk[^"]*Linux-x86_64\.tar\.\(xz\|zst\)\)".*/\1/p' | head -n1)"
           test -n "$archive"
           curl --fail --location --retry 3 --output sdk.tar "${base}/${archive}"
-          mkdir sdk
-          tar -xf sdk.tar --strip-components=1 -C sdk
-          echo "dir=$GITHUB_WORKSPACE/sdk" >> "$GITHUB_OUTPUT"
+          sdk_dir="$RUNNER_TEMP/openwrt-sdk-${RELEASE}"
+          mkdir -p "$sdk_dir"
+          tar -xf sdk.tar --strip-components=1 -C "$sdk_dir"
+          echo "dir=$sdk_dir" >> "$GITHUB_OUTPUT"
 
       - name: Install feeds and package
         working-directory: ${{ steps.sdk.outputs.dir }}
@@ -70,7 +71,7 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" package/luci-app-adguardhome
           printf '%s\n' \
             'CONFIG_PACKAGE_luci-app-adguardhome=m' \
-            'CONFIG_LUCI_LANG_zh_Hans=m' \
+            'CONFIG_LUCI_LANG_zh_Hans=y' \
             'CONFIG_PACKAGE_luci-i18n-adguardhome-zh-cn=m' >> .config
           make defconfig
 
@@ -92,9 +93,10 @@ jobs:
       - name: Collect packages
         env:
           RELEASE: ${{ matrix.release }}
+          SDK_DIR: ${{ steps.sdk.outputs.dir }}
         run: |
           mkdir -p artifacts
-          find sdk/bin/packages -type f \( \
+          find "$SDK_DIR/bin/packages" -type f \( \
             -name 'luci-app-adguardhome*.ipk' -o \
             -name 'luci-app-adguardhome*.apk' -o \
             -name 'luci-i18n-adguardhome-zh-cn*.ipk' -o \

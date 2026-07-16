@@ -7,6 +7,7 @@ PKG_NAME:=luci-app-adguardhome
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ysuolmai
 
+LUCI_BASENAME:=adguardhome
 LUCI_TITLE:=Modern LuCI integration for AdGuard Home
 LUCI_DEPENDS:=+curl +jsonfilter +rpcd-mod-ucode
 LUCI_PKGARCH:=all
